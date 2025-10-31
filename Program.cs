@@ -68,7 +68,7 @@
             Console.WriteLine($"✅ 帳票クラス一覧出力: {reportOutputPath}");
 
             // ② .aspx.cs ファイルでの使用箇所を検索
-            var usageResults = new List<(string ClassName, string FilePath)>();
+            var usageResults = new List<(string ClassName, string CsPath, string AspxPath)>();
             var aspxFiles = Directory.GetFiles(webFolder, "*.aspx.cs", SearchOption.AllDirectories).ToList();
 
             foreach (var file in aspxFiles)
@@ -85,19 +85,37 @@
 
                     if (found)
                     {
-                        usageResults.Add((className, file));
+                        string csFileName = Path.GetFileName(file);
+                        string csFolder = Path.GetDirectoryName(file);
+                        string matchedAspxPath = null;
+
+                        var aspxCandidates = Directory.GetFiles(csFolder, "*.aspx", SearchOption.TopDirectoryOnly);
+                        foreach (var aspxFile in aspxCandidates)
+                        {
+                            var aspxContent = await File.ReadAllTextAsync(aspxFile);
+                            if (aspxContent.Contains($"CodeFile=\"{csFileName}\""))
+                            {
+                                matchedAspxPath = aspxFile;
+                                break;
+                            }
+                        }
+
+                        usageResults.Add((className, file, matchedAspxPath ?? "なし"));
                         Console.WriteLine($"▶ 使用検出: {className} → {file}");
+                        if (matchedAspxPath != null)
+                        {
+                            Console.WriteLine($"🔗 対応 .aspx ファイル: {matchedAspxPath}");
+                        }
                     }
                 }
             }
 
-            // 出力②：使用箇所一覧
+            // 出力②：使用箇所一覧（3列）
             var usageLines = usageResults
-                .Select(u => $"{u.ClassName}\t{u.FilePath}")
+                .Select(u => $"{u.ClassName}\t{u.CsPath}\t{u.AspxPath}")
                 .ToList();
             await File.WriteAllLinesAsync(usageOutputPath, usageLines, System.Text.Encoding.UTF8);
             Console.WriteLine($"✅ 使用箇所一覧出力: {usageOutputPath}");
-
             Console.WriteLine("🌈 解析完了！");
         }
     }
