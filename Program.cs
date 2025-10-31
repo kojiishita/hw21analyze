@@ -1,17 +1,16 @@
 ﻿namespace hw21analyze
 {
+    using Microsoft.CodeAnalysis;
+    using Microsoft.CodeAnalysis.CSharp;
+    using Microsoft.CodeAnalysis.CSharp.Syntax;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Threading.Tasks;
-    using Microsoft.CodeAnalysis;
-    using Microsoft.CodeAnalysis.CSharp;
-    using Microsoft.CodeAnalysis.CSharp.Syntax;
 
     class Program
     {
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             var reportFolder = @"C:\work\HW21\ReportAssembly"; // 帳票クラスのフォルダ
             var webFolder = @"C:\work\HW21\hw21plus";    // .aspx.cs のフォルダ
@@ -33,9 +32,9 @@
 
             foreach (var file in csFiles)
             {
-                var code = await File.ReadAllTextAsync(file);
+                var code = File.ReadAllText(file);
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var root = await tree.GetRootAsync();
+                var root = tree.GetRoot();
 
                 var classNodes = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
 
@@ -54,7 +53,7 @@
                         {
                             var className = classNode.Identifier.Text;
                             reportClassNames.Add((className, file));
-                            Console.WriteLine($"◎ 帳票クラス検出: {className}（{file}）");
+                            Console.WriteLine($"帳票クラス検出: {className}（{file}）");
                         }
                     }
                 }
@@ -64,8 +63,8 @@
             var reportLines = reportClassNames
                 .Select(r => $"{r.ClassName}\t{r.FilePath}")
                 .ToList();
-            await File.WriteAllLinesAsync(reportOutputPath, reportLines, System.Text.Encoding.UTF8);
-            Console.WriteLine($"✅ 帳票クラス一覧出力: {reportOutputPath}");
+            File.WriteAllLines(reportOutputPath, reportLines, System.Text.Encoding.UTF8);
+            Console.WriteLine($"帳票クラス一覧出力: {reportOutputPath}");
 
             // ② .aspx.cs ファイルでの使用箇所を検索
             var usageResults = new List<(string ClassName, string CsPath, string AspxPath)>();
@@ -73,9 +72,9 @@
 
             foreach (var file in aspxFiles)
             {
-                var code = await File.ReadAllTextAsync(file);
+                var code = File.ReadAllText(file);
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var root = await tree.GetRootAsync();
+                var root = tree.GetRoot();
 
                 foreach (var (className, _) in reportClassNames)
                 {
@@ -92,7 +91,7 @@
                         var aspxCandidates = Directory.GetFiles(csFolder, "*.aspx", SearchOption.TopDirectoryOnly);
                         foreach (var aspxFile in aspxCandidates)
                         {
-                            var aspxContent = await File.ReadAllTextAsync(aspxFile);
+                            var aspxContent = File.ReadAllText(aspxFile);
                             if (aspxContent.Contains($"CodeFile=\"{csFileName}\""))
                             {
                                 matchedAspxPath = aspxFile;
@@ -101,22 +100,22 @@
                         }
 
                         usageResults.Add((className, file, matchedAspxPath ?? "なし"));
-                        Console.WriteLine($"▶ 使用検出: {className} → {file}");
+                        Console.WriteLine($"使用検出: {className} → {file}");
                         if (matchedAspxPath != null)
                         {
-                            Console.WriteLine($"🔗 対応 .aspx ファイル: {matchedAspxPath}");
+                            Console.WriteLine($"対応 .aspx ファイル: {matchedAspxPath}");
                         }
                     }
                 }
             }
 
-            // 出力②：使用箇所一覧（3列）
+            // 出力②：使用箇所一覧
             var usageLines = usageResults
                 .Select(u => $"{u.ClassName}\t{u.CsPath}\t{u.AspxPath}")
                 .ToList();
-            await File.WriteAllLinesAsync(usageOutputPath, usageLines, System.Text.Encoding.UTF8);
-            Console.WriteLine($"✅ 使用箇所一覧出力: {usageOutputPath}");
-            Console.WriteLine("🌈 解析完了！");
+            File.WriteAllLines(usageOutputPath, usageLines, System.Text.Encoding.UTF8);
+            Console.WriteLine($"使用箇所一覧出力: {usageOutputPath}");
+            Console.WriteLine("解析完了！");
         }
     }
 }
